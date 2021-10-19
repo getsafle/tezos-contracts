@@ -1,14 +1,24 @@
 import smartpy as sp
 
+registrarStorage = sp.io.import_stored_contract("RegistrarStorage.py")
+checker = sp.io.import_stored_contract("CheckingClass.py")
+
 
 class RegistrarMain(sp.Contract):
-    def __init__(self, _walletAddress):
+    def __init__(self):
         self.init(
-            contractOwner=sp.sender,
-            walletAddress=_walletAddress,
+            contractOwner=sp.address("tz1"),
+            walletAddress=sp.address("tz1"),
             safleIdRegStatus=False,
-            registrarStorageContractAddress=0
+            registrarStorageContractAddress=sp.address("tz1"),
+            registrarFees=sp.mutez(0),
+            storageContractAddress=False
         )
+
+    @sp.entry_point
+    def setOwner(self):
+        sp.verify(self.data.contractOwner == sp.address("tz1"), "Owner can be set only once.")
+        self.data.contractOwner = sp.sender
 
     def onlyOwner(self):
         sp.verify(self.data.contractOwner == sp.sender)
@@ -21,13 +31,44 @@ class RegistrarMain(sp.Contract):
         sp.verify(_amount > 0)
         self.data.registrarFees = _amount
 
+    def checkStorageContractAddress(self):
+        sp.verify(self.data.storageContractAddress, "storage address not set")
+
+    def checkRegistrationStatus(self):
+        sp.verify(self.data.safleIdRegStatus == sp.bool(False))
+
+    def registrarChecks(self, _registrarName):
+        sp.verify(sp.amount >= self.data.registrarFees, "Registration fees not matched.")
+        sp.verify(checker.isSafleIdValid(_registrarName=_registrarName))
+
     def toggleRegisterationStatus(self):
         self.data.safleIdRegStatus = not (self.data.safleIdRegStatus)
         return True
 
-    def registerRegistrar(self, _registrarName):
-        lower = _registrarName.toLower()
-        sp.transfer(self.data.walletAddress, sp.value)
+    @sp.entry_point
+    def registerRegistrar(self, params):
+        self.registrarChecks(params._registrarName)
+        self.checkRegistrationStatus()
+        self.checkStorageContractAddress()
+        
+        lower = checker.toLower(params._registrarName)
+        sp.send(self.data.walletAddress, sp.balance)
+        registrarStorageContract = sp.contract(
+            sp.TRecord(
+                _registrar=sp.TAddress,
+                _registrarName=sp.TString
+            ),
+            self.data.registrarStorageContractAddress,
+            entry_point="registerRegistrar"
+        ).open_some()
+        sp.transfer(
+            sp.record(
+                _registrar=sp.sender,
+                _registrarName=lower
+            ),
+            sp.mutez(0),
+            registrarStorageContract
+        )
 
     def updateRegistrar(self, _registrarName):
         lower = _registrarName.toLower()
@@ -47,8 +88,9 @@ class RegistrarMain(sp.Contract):
         mydata = sp.record(sp.sender,_userAddress,lower)
         sp.transfer(mydata,sp.mutez(0),c)
 
-    def setStorageContract(self, _registrarStorageContract):
-        self.data.registrarStorageContractAddress = _registrarStorageContract
+    @sp.entry_point
+    def setStorageContract(self, params):
+        self.data.registrarStorageContractAddress = params._registrarStorageContract
         self.data.storageContractAddress = True
 
     def updateWalletAddress(self, _walletAddress):
@@ -78,20 +120,33 @@ class RegistrarMain(sp.Contract):
         c = sp.contract(sp.TRecord(num = sp.TInt),self.data.registrarStorageContractAddress,entry_point="updateCoinAddress").open_some()
         mydata = sp.record(_userAddress,_index,_address.toLower(), sp.sender)
         sp.transfer(mydata,sp.mutez(0),c)
-    
-    @sp.add_test(name="SafleID Main")
-    def test():
-        scenario = sp.test_scenario()
-        scenario.table_of_contents()
-        scenario.h1("Safle Main")
 
-        # Initialize test admin addresses
-        contractOwner = sp.address("tz1-admin-1234")
-        seller = sp.address("tz1-seller-1234")
-        mainContract = sp.address("tz1-proxy-1234")
 
-        c1 = RegistrarMain(mainContract)
-        scenario += c1
+@sp.add_test(name="SafleID Main")
+def test():
+    scenario = sp.test_scenario()
+    scenario.table_of_contents()
+    scenario.h1("Safle Main")
 
-        scenario += c1.registerRegistrar(_registrar=1,
-                                 _registrarName=seller).run(sender=mainContract)
+    # Initialize test admin addresses
+    owner = sp.test_account("owner")
+    seller = sp.test_account("seller")
+
+    mainContract = RegistrarMain()
+    scenario += mainContract
+    mainContract.setOwner().run(sender=owner)
+
+    storageContract = registrarStorage.RegistrarStorage()
+    scenario += storageContract
+
+    scenario += storageContract.setOwner().run(sender=owner)
+    scenario += storageContract.upgradeMainContractAddress(
+        _mainContractAddress=mainContract.address
+    ).run(sender=owner)
+
+    scenario += mainContract.setStorageContract(
+        _registrarStorageContract=storageContract.address
+    ).run(sender=owner)
+    scenario += mainContract.registerRegistrar(
+        _registrarName="seller"
+    ).run(sender=seller)
