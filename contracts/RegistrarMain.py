@@ -5,20 +5,15 @@ checker = sp.io.import_stored_contract("CheckingClass.py")
 
 
 class RegistrarMain(sp.Contract):
-    def __init__(self):
+    def __init__(self, _ownerAddress, _walletAddress):
         self.init(
-            contractOwner=sp.address("tz1"),
-            walletAddress=sp.address("tz1"),
+            contractOwner=_ownerAddress,
+            walletAddress=_walletAddress,
             safleIdRegStatus=False,
             registrarStorageContractAddress=sp.address("tz1"),
             registrarFees=sp.mutez(0),
             storageContractAddress=False
         )
-
-    @sp.entry_point
-    def setOwner(self):
-        sp.verify(self.data.contractOwner == sp.address("tz1"), "Owner can be set only once.")
-        self.data.contractOwner = sp.sender
 
     def onlyOwner(self):
         sp.verify(self.data.contractOwner == sp.sender)
@@ -131,18 +126,19 @@ def test():
     # Initialize test admin addresses
     owner = sp.test_account("owner")
     seller = sp.test_account("seller")
+    wallet = sp.test_account("wallet")
 
-    mainContract = RegistrarMain()
+    mainContract = RegistrarMain(
+        _ownerAddress=owner.address,
+        _walletAddress=wallet.address
+    )
     scenario += mainContract
-    mainContract.setOwner().run(sender=owner)
 
-    storageContract = registrarStorage.RegistrarStorage()
-    scenario += storageContract
-
-    scenario += storageContract.setOwner().run(sender=owner)
-    scenario += storageContract.upgradeMainContractAddress(
+    storageContract = registrarStorage.RegistrarStorage(
+        _ownerAddress=owner.address,
         _mainContractAddress=mainContract.address
-    ).run(sender=owner)
+    )
+    scenario += storageContract
 
     scenario += mainContract.setStorageContract(
         _registrarStorageContract=storageContract.address

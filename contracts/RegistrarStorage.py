@@ -2,10 +2,10 @@ import smartpy as sp
 
 
 class RegistrarStorage(sp.Contract):
-    def __init__(self):
+    def __init__(self, _ownerAddress, _mainContractAddress):
         self.init(
-            contractOwner=sp.address("tz1"),
-            mainContract=sp.address("tz1"),
+            contractOwner=_ownerAddress,
+            mainContract=_mainContractAddress,
             resolveAddressFromSafleId=sp.map(),
             auctionProcess=sp.map(),
             coinAddressToSafleId=sp.map(),
@@ -42,11 +42,6 @@ class RegistrarStorage(sp.Contract):
             totalSafleIDCount=sp.map(),
             unavailableSafleIds=sp.map()
         )
-
-    @sp.entry_point
-    def setOwner(self):
-        sp.verify(self.data.contractOwner == sp.address("tz1"), "Owner can be set only once.")
-        self.data.contractOwner = sp.sender
 
     def onlyOwner(self):
         sp.verify(self.data.contractOwner == sp.sender)
