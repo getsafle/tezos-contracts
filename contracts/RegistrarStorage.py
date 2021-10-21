@@ -70,6 +70,12 @@ class RegistrarStorage(sp.Contract):
     def auctionContract(self):
         sp.verify(sp.sender == self.data.auctionContractAddress)
 
+    def coinAddressCheck(self, _userAddress, _index, _registrar):
+        sp.verify(~self.data.Registrars.contains(_registrar), "Invalid Registrar")
+        sp.verify(self.data.OtherCoin.contains(_index), "This index number is not mapped.");
+        sp.if self.data.auctionProcess.contains(_userAddress):
+            sp.verify(~self.data.auctionProcess[_userAddress])
+
     @sp.entry_point
     def upgradeMainContractAddress(self, params):
         self.data.mainContract = params._mainContractAddress
