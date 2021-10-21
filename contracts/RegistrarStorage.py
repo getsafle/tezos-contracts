@@ -67,6 +67,9 @@ class RegistrarStorage(sp.Contract):
         sp.verify(~self.data.resolveAddressFromSafleId.contains(idBytes), "This SafleId is already registered.")
         sp.verify(~self.data.unavailableSafleIds.contains(_safleId), "SafleId is already used once, not available now")
 
+    def auctionContract(self):
+        sp.verify(sp.sender == self.data.auctionContractAddress)
+
     @sp.entry_point
     def upgradeMainContractAddress(self, params):
         self.data.mainContract = params._mainContractAddress
