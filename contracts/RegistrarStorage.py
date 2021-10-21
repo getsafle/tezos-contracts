@@ -54,6 +54,11 @@ class RegistrarStorage(sp.Contract):
     def onlyMainContract(self):
         sp.verify(self.data.mainContract == sp.sender)
 
+    def registrarChecks(self, _registrarName):
+        regNameBytes = sp.pack(_registrarName)
+        sp.verify(~self.data.registrarNameToAddress.contains(regNameBytes), "Registrar name is already taken.")
+        sp.verify(~self.data.resolveAddressFromSafleId.contains(regNameBytes), "This Registrar name is already registered as an SafleID.")
+
     def safleIdChecks(self, _safleId, _registrar):
         idBytes = sp.pack(_safleId)
 
