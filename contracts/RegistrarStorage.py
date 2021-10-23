@@ -218,9 +218,12 @@ class RegistrarStorage(sp.Contract):
 
     @sp.entry_point
     def updateCoinAddress(self, _userAddress, _index, _newAddress, _registrar):
-        sp.verify(self.data.Registrars[_registrar].isRegisteredRegistrar)
+        self.coinAddressCheck(_userAddress, _index, _registrar)
+        self.onlyMainContract()
+
+        sp.verify(self.data.Registrars[_registrar].isRegisteredRegistrar, "Invalid Registrar")
         sp.verify(self.data.auctionProcess[_userAddress] == False)
-        sp.verify(self.data.OtherCoin[_index].isIndexMapped == True)
+        sp.verify(self.data.OtherCoin[_index].isIndexMapped == True, "This index number is not mapped.")
 
         safleId = self.data.resolveUserAddress[_userAddress]
         sp.verify(self.data.safleIdToCoinAddress[safleId].contains(_index))
