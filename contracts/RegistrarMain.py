@@ -11,6 +11,7 @@ class RegistrarMain(sp.Contract):
             walletAddress=sp.address("tz1"),
             safleIdRegStatus=False,
             registrarStorageContractAddress=sp.address("tz1"),
+            safleIdFees=sp.mutez(0),
             registrarFees=sp.mutez(0),
             storageContractAddress=False
         )
@@ -37,9 +38,12 @@ class RegistrarMain(sp.Contract):
         sp.verify(self.data.contractOwner == sp.address("tz1"), "Owner can be set only once.")
         self.data.contractOwner = sp.sender
 
+    @sp.entry_point
     def setSafleIdFees(self, _amount):
-        sp.verify(_amount > 0)
-        self.data.safleIdFees = _amount
+        self.onlyOwner()
+
+        sp.verify(_amount >= 0, "Please set a fees for SafleID registration.")
+        self.data.safleIdFees = sp.utils.nat_to_mutez(_amount)
 
     def setRegistrarFees(self, _amount):
         sp.verify(_amount > 0)
@@ -56,7 +60,7 @@ class RegistrarMain(sp.Contract):
         self.registrarChecks(params._registrarName)
         self.checkRegistrationStatus()
         self.checkStorageContractAddress()
-        
+
         lower = checker.toLower(params._registrarName)
         sp.send(self.data.walletAddress, sp.balance)
         registrarStorageContract = sp.contract(
