@@ -182,10 +182,12 @@ class RegistrarStorage(sp.Contract):
 
     @sp.entry_point
     def auctionInProcess(self, _safleIdOwner, _safleId):
+        self.auctionContract()
+
         idBytes = sp.pack(_safleId)
 
-        sp.verify(_safleId.length != 0)
-        sp.verify(self.data.resolveAddressFromSafleId.contains(idBytes))
+        sp.verify(_safleId.length != 0, "Resolver : User SafleID should not be empty.")
+        sp.verify(self.data.resolveAddressFromSafleId.contains(idBytes), "Resolver : User is not yet registered for this SafleID.")
         self.data.auctionProcess[_safleIdOwner] = True
 
     @sp.entry_point
