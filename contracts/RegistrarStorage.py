@@ -62,6 +62,9 @@ class RegistrarStorage(sp.Contract):
 
     @sp.entry_point
     def registerRegistrar(self, _registrar, _registrarName):
+        self.registrarChecks(_registrarName)
+        self.onlyMainContract()
+
         regNameBytes = sp.pack(_registrarName)
         self.data.Registrars[_registrar] = sp.record(
             isRegisteredRegistrar=True,
