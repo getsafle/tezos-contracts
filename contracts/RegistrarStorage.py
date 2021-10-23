@@ -236,5 +236,5 @@ class RegistrarStorage(sp.Contract):
         sp.result(self.data.coinAddressToSafleId[_address])
 
     @sp.utils.view(sp.TAddress)
-    def idToCoinAddress(self, _safleId, _index):
-        sp.result(self.data.safleIdToCoinAddress[_safleId][_index])
+    def idToCoinAddress(self, params):
+        sp.result(self.data.safleIdToCoinAddress[params._safleId][params._index])
