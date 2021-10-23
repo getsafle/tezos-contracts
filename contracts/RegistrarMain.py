@@ -45,9 +45,11 @@ class RegistrarMain(sp.Contract):
         sp.verify(_amount > 0)
         self.data.registrarFees = _amount
 
-    def toggleRegisterationStatus(self):
-        self.data.safleIdRegStatus = not (self.data.safleIdRegStatus)
-        return True
+    @sp.entry_point
+    def toggleRegistrationStatus(self):
+        self.onlyOwner()
+
+        self.data.safleIdRegStatus = ~(self.data.safleIdRegStatus)
 
     @sp.entry_point
     def registerRegistrar(self, params):
