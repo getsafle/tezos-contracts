@@ -109,7 +109,10 @@ class RegistrarStorage(sp.Contract):
 
     @sp.entry_point
     def registerSafleId(self, _registrar, _userAddress, _safleId):
-        sp.verify(self.data.isAddressTaken[_userAddress] == False)
+        self.safleIdChecks(_safleId, _registrar)
+        self.onlyMainContract()
+
+        sp.verify(self.data.isAddressTaken[_userAddress] == False, "SafleID already registered")
 
         idBytes = sp.pack(_safleId)
 
