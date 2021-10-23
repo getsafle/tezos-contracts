@@ -123,9 +123,12 @@ class RegistrarStorage(sp.Contract):
 
     @sp.entry_point
     def updateSafleId(self, _registrar, _userAddress, _safleId):
-        sp.verify(self.data.totalSafleIDCount[_userAddress]+1 <= 5) #MAX_NAME_UPDATES
-        sp.verify(self.data.isAddressTaken[_userAddress] == True)
-        sp.verify(self.data.auctionProcess[_userAddress] == False)
+        self.safleIdChecks(_safleId, _registrar)
+        self.onlyMainContract()
+
+        sp.verify(self.data.totalSafleIDCount[_userAddress]+1 <= 5, "Maximum update count reached.") #MAX_NAME_UPDATES
+        sp.verify(self.data.isAddressTaken[_userAddress] == True, "SafleID not registered.")
+        sp.verify(self.data.auctionProcess[_userAddress] == False, "SafleId cannot be updated inbetween Auction.")
 
         idBytes = sp.pack(_safleId)
 
