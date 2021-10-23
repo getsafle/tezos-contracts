@@ -104,9 +104,9 @@ class RegistrarStorage(sp.Contract):
     @sp.utils.view(sp.TAddress)
     def resolveRegistrarName(self, _name):
         regNameBytes = sp.pack(_name)
-        sp.verify(self.data.registrarNameToAddress.contains(regNameBytes))
+        sp.verify(self.data.registrarNameToAddress.contains(regNameBytes), "Resolver : Registrar is not yet registered for this SafleID.")
         sp.result(self.data.registrarNameToAddress[regNameBytes])
-  
+
     @sp.entry_point
     def registerSafleId(self, _registrar, _userAddress, _safleId):
         sp.verify(self.data.isAddressTaken[_userAddress] == False)
@@ -142,8 +142,8 @@ class RegistrarStorage(sp.Contract):
     @sp.utils.view(sp.TAddress)
     def resolveSafleId(self, _safleId):
         idBytes = sp.pack(_safleId)
-        sp.verify(sp.len(sp.pack(_safleId)) != 0)
-        sp.verify(self.data.resolveAddressFromSafleId.contains(idBytes))
+        sp.verify(sp.len(sp.pack(_safleId)) != 0, "Resolver : user SafleID should not be empty.")
+        sp.verify(self.data.resolveAddressFromSafleId.contains(idBytes), "Resolver : User is not yet registered for this SafleID.")
         sp.result(self.data.resolveAddressFromSafleId[idBytes])
 
     @sp.entry_point
@@ -217,5 +217,5 @@ class RegistrarStorage(sp.Contract):
         sp.result(self.data.coinAddressToSafleId[_address])
 
     @sp.utils.view(sp.TAddress)
-    def idToCoinAddress(self, params):
-        sp.result(self.data.safleIdToCoinAddress[params._safleId][params._index])
+    def idToCoinAddress(self, _safleId, _index):
+        sp.result(self.data.safleIdToCoinAddress[_safleId][_index])
