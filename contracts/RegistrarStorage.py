@@ -192,9 +192,11 @@ class RegistrarStorage(sp.Contract):
 
     @sp.entry_point
     def mapCoin(self, _indexnumber, _coinName, _aliasName, _registrar):
-        sp.verify(self.data.OtherCoin[_indexnumber].isIndexMapped == False)
-        sp.verify(self.data.isCoinMapped[_coinName] == False)
-        sp.verify(self.data.Registrars[_registrar].isRegisteredRegistrar)
+        self.onlyMainContract()
+
+        sp.verify(self.data.OtherCoin[_indexnumber].isIndexMapped == False, "This index number has already been mapped.")
+        sp.verify(self.data.isCoinMapped[_coinName] == False, "This coin is already mapped.")
+        sp.verify(self.data.Registrars[_registrar].isRegisteredRegistrar, "Invalid Registrar.")
 
         self.data.OtherCoin[_indexnumber].isIndexMapped = True
         self.data.OtherCoin[_indexnumber].aliasName = _aliasName
