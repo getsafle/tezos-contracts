@@ -45,9 +45,12 @@ class RegistrarMain(sp.Contract):
         sp.verify(_amount >= 0, "Please set a fees for SafleID registration.")
         self.data.safleIdFees = sp.utils.nat_to_mutez(_amount)
 
+    @sp.entry_point
     def setRegistrarFees(self, _amount):
-        sp.verify(_amount > 0)
-        self.data.registrarFees = _amount
+        self.onlyOwner()
+
+        sp.verify(_amount >= 0, "Please set a fees for Registrar registration.")
+        self.data.registrarFees = sp.utils.nat_to_mutez(_amount)
 
     @sp.entry_point
     def toggleRegistrationStatus(self):
