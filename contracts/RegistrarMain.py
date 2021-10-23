@@ -15,13 +15,27 @@ class RegistrarMain(sp.Contract):
             storageContractAddress=False
         )
 
+    def onlyOwner(self):
+        sp.verify(self.data.contractOwner == sp.sender, "sender is not a contract owner")
+
+    def checkStorageContractAddress(self):
+        sp.verify(self.data.storageContractAddress, "storage address not set")
+
+    def checkRegistrationStatus(self):
+        sp.verify(self.data.safleIdRegStatus == False, "SafleId Registration is Paused")
+
+    def registrarChecks(self, _registrarName):
+        sp.verify(sp.amount >= self.data.registrarFees, "Registration fees not matched.")
+        sp.verify(checker.isSafleIdValid(_registrarName))
+
+    def safleIdChecks(self, _safleId):
+        sp.verify(sp.amount >= self.data.safleIdFees, "Registration fees not matched.")
+        sp.verify(checker.isSafleIdValid(_safleId))
+
     @sp.entry_point
     def setOwner(self):
         sp.verify(self.data.contractOwner == sp.address("tz1"), "Owner can be set only once.")
         self.data.contractOwner = sp.sender
-
-    def onlyOwner(self):
-        sp.verify(self.data.contractOwner == sp.sender)
 
     def setSafleIdFees(self, _amount):
         sp.verify(_amount > 0)
@@ -30,16 +44,6 @@ class RegistrarMain(sp.Contract):
     def setRegistrarFees(self, _amount):
         sp.verify(_amount > 0)
         self.data.registrarFees = _amount
-
-    def checkStorageContractAddress(self):
-        sp.verify(self.data.storageContractAddress, "storage address not set")
-
-    def checkRegistrationStatus(self):
-        sp.verify(self.data.safleIdRegStatus == sp.bool(False))
-
-    def registrarChecks(self, _registrarName):
-        sp.verify(sp.amount >= self.data.registrarFees, "Registration fees not matched.")
-        sp.verify(checker.isSafleIdValid(_registrarName=_registrarName))
 
     def toggleRegisterationStatus(self):
         self.data.safleIdRegStatus = not (self.data.safleIdRegStatus)
