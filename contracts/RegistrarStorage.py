@@ -55,8 +55,10 @@ class RegistrarStorage(sp.Contract):
         sp.verify(self.data.mainContract == sp.sender)
 
     @sp.entry_point
-    def upgradeMainContractAddress(self, params):
-        self.data.mainContract = params._mainContractAddress
+    def upgradeMainContractAddress(self, _mainContractAddress):
+        self.onlyOwner()
+
+        self.data.mainContract = _mainContractAddress
 
     @sp.entry_point
     def registerRegistrar(self, _registrar, _registrarName):
