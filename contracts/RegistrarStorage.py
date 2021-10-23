@@ -176,6 +176,8 @@ class RegistrarStorage(sp.Contract):
 
     @sp.entry_point
     def setAuctionContract(self, _auctionAddress):
+        self.onlyOwner()
+
         self.data.auctionContractAddress = _auctionAddress
 
     @sp.entry_point
