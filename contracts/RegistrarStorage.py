@@ -154,10 +154,12 @@ class RegistrarStorage(sp.Contract):
 
     @sp.entry_point
     def transferSafleId(self, _safleId, _oldOwner, _newOwner):
+        self.auctionContract()
+
         idBytes = sp.pack(_safleId)
 
-        sp.verify(self.data.isAddressTaken[_oldOwner] == True)
-        sp.verify(self.data.resolveAddressFromSafleId.contains(idBytes))
+        sp.verify(self.data.isAddressTaken[_oldOwner] == True, "You are not an owner of this safleId.")
+        sp.verify(self.data.resolveAddressFromSafleId.contains(idBytes), "This SafleId does not have an owner.")
 
         self.oldSafleIds(_oldOwner, idBytes)
         self.data.isAddressTaken[_oldOwner] = False
