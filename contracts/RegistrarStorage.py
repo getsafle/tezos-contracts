@@ -78,10 +78,13 @@ class RegistrarStorage(sp.Contract):
 
     @sp.entry_point
     def updateRegistrar(self, _registrar, _newRegistrarName):
+        self.registrarChecks(_newRegistrarName)
+        self.onlyMainContract()
+
         newNameBytes = sp.pack(_newRegistrarName)
 
-        sp.verify(self.data.isAddressTaken[_registrar] == True)
-        sp.verify(self.data.totalRegistrarUpdates[_registrar]+1 <= 5) #MAX_NAME_UPDATES
+        sp.verify(self.data.isAddressTaken[_registrar] == True, "Registrar should register first.")
+        sp.verify(self.data.totalRegistrarUpdates[_registrar]+1 <= 5, "Maximum update count reached.") #MAX_NAME_UPDATES
 
         registrarObject = self.data.Registrars[_registrar]
         oldName = registrarObject.registrarName
@@ -89,7 +92,8 @@ class RegistrarStorage(sp.Contract):
         del self.data.registrarNameToAddress[oldNameBytes]
 
         self.data.resolveOldRegistrarAddress[_registrar].push(
-            sp.pack(self.data.Registrars[_registrar].registrarName))
+            sp.pack(self.data.Registrars[_registrar].registrarName)
+        )
 
         self.data.Registrars[_registrar].registrarName = _newRegistrarName
         self.data.Registrars[_registrar].registarAddress = _registrar
