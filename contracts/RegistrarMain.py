@@ -83,11 +83,30 @@ class RegistrarMain(sp.Contract):
             registrarStorageContract
         )
 
-    def updateRegistrar(self, _registrarName):
-        lower = _registrarName.toLower()
-        c = sp.contract(sp.TRecord(num = sp.TInt),self.data.registrarStorageContractAddress,entry_point="updateRegistrar").open_some()
-        mydata = sp.record(sp.sender,lower)
-        sp.transfer(mydata,sp.mutez(0),c)
+    @sp.entry_point
+    def updateRegistrar(self, params):
+        self.registrarChecks(params._registrarName)
+        self.checkRegistrationStatus()
+        self.checkStorageContractAddress()
+
+        lower = checker.toLower(params._registrarName)
+        sp.send(self.data.walletAddress, sp.balance)
+        registrarStorageContract = sp.contract(
+            sp.TRecord(
+                _registrar=sp.TAddress,
+                _newRegistrarName=sp.TString
+            ),
+            self.data.registrarStorageContractAddress,
+            entry_point="updateRegistrar"
+        ).open_some()
+        sp.transfer(
+            sp.record(
+                _registrar=sp.sender,
+                _newRegistrarName=lower
+            ),
+            sp.mutez(0),
+            registrarStorageContract
+        )
 
     def registerSafleId(self, _userAddress,_safleId):
         lower = _safleId.toLower()
