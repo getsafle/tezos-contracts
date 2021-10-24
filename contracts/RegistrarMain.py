@@ -169,7 +169,11 @@ class RegistrarMain(sp.Contract):
         self.data.registrarStorageContractAddress = params._registrarStorageContract
         self.data.storageContractAddress = True
 
+    @sp.entry_point
     def updateWalletAddress(self, _walletAddress):
+        self.onlyOwner()
+
+        sp.verify(~checker.isContract(_walletAddress))
         self.data.walletAddress = _walletAddress
 
     def mapCoins(self, _indexNumber, _blockchainName, _aliasName):
