@@ -164,6 +164,8 @@ class RegistrarMain(sp.Contract):
 
     @sp.entry_point
     def setStorageContract(self, params):
+        self.onlyOwner()
+
         self.data.registrarStorageContractAddress = params._registrarStorageContract
         self.data.storageContractAddress = True
 
