@@ -204,14 +204,31 @@ class RegistrarMain(sp.Contract):
             registrarStorageContract
         )
 
+    @sp.entry_point
     def registerCoinAddress(self, _userAddress, _index, _address):
-        length = len(_address)
+        lowerAddress = checker.toLower(_address)
         sp.verify(_index != 0)
-        sp.verify(_userAddress != 0)
-        sp.verify(length > 0)
-        c = sp.contract(sp.TRecord(num = sp.TInt),self.data.registrarStorageContractAddress,entry_point="registerCoinAddress").open_some()
-        mydata = sp.record(_userAddress,_index,_address.toLower(), sp.sender)
-        sp.transfer(mydata,sp.mutez(0),c)
+        
+        registrarStorageContract = sp.contract(
+            sp.TRecord(
+                _userAddress=sp.TAddress,
+                _index=sp.TNat,
+                _address=sp.TString,
+                _registrar=sp.TAddress
+            ),
+            self.data.registrarStorageContractAddress,
+            entry_point="registerCoinAddress"
+        ).open_some()
+        sp.transfer(
+            sp.record(
+                _userAddress=_userAddress,
+                _index=_index,
+                _address=lowerAddress,
+                _registrar=sp.sender
+            ),
+            sp.mutez(0),
+            registrarStorageContract
+        )
 
     @sp.entry_point
     def updateCoinAddress(self, _userAddress, _index, _address):
