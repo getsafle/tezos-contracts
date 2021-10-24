@@ -213,14 +213,31 @@ class RegistrarMain(sp.Contract):
         mydata = sp.record(_userAddress,_index,_address.toLower(), sp.sender)
         sp.transfer(mydata,sp.mutez(0),c)
 
+    @sp.entry_point
     def updateCoinAddress(self, _userAddress, _index, _address):
-        length = len(_address)      
+        lowerAddress = checker.toLower(_address)
         sp.verify(_index != 0)
-        sp.verify(_userAddress != 0)
-        sp.verify(length > 0)                     #confirm why? should be a fixed length string
-        c = sp.contract(sp.TRecord(num = sp.TInt),self.data.registrarStorageContractAddress,entry_point="updateCoinAddress").open_some()
-        mydata = sp.record(_userAddress,_index,_address.toLower(), sp.sender)
-        sp.transfer(mydata,sp.mutez(0),c)
+        
+        registrarStorageContract = sp.contract(
+            sp.TRecord(
+                _userAddress=sp.TAddress,
+                _index=sp.TNat,
+                _newAddress=sp.TString,
+                _registrar=sp.TAddress
+            ),
+            self.data.registrarStorageContractAddress,
+            entry_point="updateCoinAddress"
+        ).open_some()
+        sp.transfer(
+            sp.record(
+                _userAddress=_userAddress,
+                _index=_index,
+                _newAddress=lowerAddress,
+                _registrar=sp.sender
+            ),
+            sp.mutez(0),
+            registrarStorageContract
+        )
 
 
 @sp.add_test(name="SafleID Main")
