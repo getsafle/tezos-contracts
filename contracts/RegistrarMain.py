@@ -176,12 +176,33 @@ class RegistrarMain(sp.Contract):
         sp.verify(~checker.isContract(_walletAddress))
         self.data.walletAddress = _walletAddress
 
+    @sp.entry_point
     def mapCoins(self, _indexNumber, _blockchainName, _aliasName):
+        lowerBlockchainName = checker.toLower(_blockchainName)
+        lowerAliasName = checker.toLower(_aliasName)
         sp.verify(_indexNumber != 0)
-        c = sp.contract(sp.TRecord(num = sp.TInt),self.data.registrarStorageContractAddress,entry_point="mapCoin").open_some()
-        mydata = sp.record(_indexNumber,_blockchainName.toLower(),_aliasName.toLower(), sp.sender)
-        sp.transfer(mydata,sp.mutez(0),c)
-        return True
+        sp.verify(checker.checkAlphaNumeric(lowerBlockchainName) & checker.checkAlphaNumeric(lowerAliasName), "Only alphanumeric allowed in blockchain name and alias name")
+        
+        registrarStorageContract = sp.contract(
+            sp.TRecord(
+                _indexnumber=sp.TNat,
+                _coinName=sp.TString,
+                _aliasName=sp.TString,
+                _registrar=sp.TAddress
+            ),
+            self.data.registrarStorageContractAddress,
+            entry_point="mapCoin"
+        ).open_some()
+        sp.transfer(
+            sp.record(
+                _indexnumber=_indexNumber,
+                _coinName=lowerBlockchainName,
+                _aliasName=lowerAliasName,
+                _registrar=sp.sender
+            ),
+            sp.mutez(0),
+            registrarStorageContract
+        )
 
     def registerCoinAddress(self, _userAddress, _index, _address):
         length = len(_address)
