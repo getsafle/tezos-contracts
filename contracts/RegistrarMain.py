@@ -1,10 +1,10 @@
 import smartpy as sp
 
 registrarStorage = sp.io.import_stored_contract("RegistrarStorage.py")
-checker = sp.io.import_stored_contract("CheckingClass.py")
+checkingContract = sp.io.import_stored_contract("CheckingContract.py")
 
 
-class RegistrarMain(sp.Contract):
+class RegistrarMain(checkingContract.CheckingContract):
     def __init__(self):
         self.init(
             contractOwner=sp.address("tz1"),
@@ -27,11 +27,11 @@ class RegistrarMain(sp.Contract):
 
     def registrarChecks(self, _registrarName):
         sp.verify(sp.amount >= self.data.registrarFees, "Registration fees not matched.")
-        sp.verify(checker.isSafleIdValid(_registrarName))
+        self.isSafleIdValid(_registrarName)
 
     def safleIdChecks(self, _safleId):
         sp.verify(sp.amount >= self.data.safleIdFees, "Registration fees not matched.")
-        sp.verify(checker.isSafleIdValid(_safleId))
+        self.isSafleIdValid(_safleId)
 
     @sp.entry_point
     def setOwner(self):
@@ -64,7 +64,7 @@ class RegistrarMain(sp.Contract):
         self.checkRegistrationStatus()
         self.checkStorageContractAddress()
 
-        lower = checker.toLower(params._registrarName)
+        lower = self.toLower(params._registrarName)
         sp.send(self.data.walletAddress, sp.balance)
         registrarStorageContract = sp.contract(
             sp.TRecord(
@@ -89,7 +89,7 @@ class RegistrarMain(sp.Contract):
         self.checkRegistrationStatus()
         self.checkStorageContractAddress()
 
-        lower = checker.toLower(params._registrarName)
+        lower = self.toLower(params._registrarName)
         sp.send(self.data.walletAddress, sp.balance)
         registrarStorageContract = sp.contract(
             sp.TRecord(
@@ -114,7 +114,7 @@ class RegistrarMain(sp.Contract):
         self.checkRegistrationStatus()
         self.checkStorageContractAddress()
 
-        lower = checker.toLower(params._safleId)
+        lower = self.toLower(params._safleId)
         sp.send(self.data.walletAddress, sp.balance)
         registrarStorageContract = sp.contract(
             sp.TRecord(
@@ -141,7 +141,7 @@ class RegistrarMain(sp.Contract):
         self.checkRegistrationStatus()
         self.checkStorageContractAddress()
 
-        lower = checker.toLower(params._newSafleId)
+        lower = self.toLower(params._newSafleId)
         sp.send(self.data.walletAddress, sp.balance)
         registrarStorageContract = sp.contract(
             sp.TRecord(
@@ -173,16 +173,17 @@ class RegistrarMain(sp.Contract):
     def updateWalletAddress(self, params):
         self.onlyOwner()
 
-        sp.verify(~checker.isContract(params._walletAddress))
+        sp.verify(~self.isContract(params._walletAddress))
         self.data.walletAddress = params._walletAddress
 
     @sp.entry_point
     def mapCoins(self, params):
-        lowerBlockchainName = checker.toLower(params._blockchainName)
-        lowerAliasName = checker.toLower(params._aliasName)
+        lowerBlockchainName = self.toLower(params._blockchainName)
+        lowerAliasName = self.toLower(params._aliasName)
         sp.verify(params._indexNumber != 0)
-        sp.verify(checker.checkAlphaNumeric(lowerBlockchainName) & checker.checkAlphaNumeric(lowerAliasName), "Only alphanumeric allowed in blockchain name and alias name")
-        
+        self.checkAlphaNumeric(lowerBlockchainName)
+        self.checkAlphaNumeric(lowerAliasName)
+
         registrarStorageContract = sp.contract(
             sp.TRecord(
                 _indexnumber=sp.TNat,
@@ -206,7 +207,7 @@ class RegistrarMain(sp.Contract):
 
     @sp.entry_point
     def registerCoinAddress(self, params):
-        lowerAddress = checker.toLower(params._address)
+        lowerAddress = self.toLower(params._address)
         sp.verify(params._index != 0)
         
         registrarStorageContract = sp.contract(
@@ -232,7 +233,7 @@ class RegistrarMain(sp.Contract):
 
     @sp.entry_point
     def updateCoinAddress(self, params):
-        lowerAddress = checker.toLower(params._address)
+        lowerAddress = self.toLower(params._address)
         sp.verify(params._index != 0)
         
         registrarStorageContract = sp.contract(
