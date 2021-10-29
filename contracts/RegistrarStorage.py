@@ -9,7 +9,14 @@ class RegistrarStorage(sp.Contract):
             resolveAddressFromSafleId=sp.map(),
             auctionProcess=sp.map(),
             coinAddressToSafleId=sp.map(),
-            OtherCoin=sp.map(),
+            OtherCoin=sp.map(
+                tkey=sp.TNat,
+                tvalue=sp.TRecord(
+                    isIndexMapped=sp.TBool,
+                    aliasName=sp.TString,
+                    coinName=sp.TString
+                )
+            ),
             isCoinMapped=sp.map(),
             Registrars=sp.map(
                 tkey=sp.TAddress,
@@ -21,7 +28,7 @@ class RegistrarStorage(sp.Contract):
             ),
             safleIdToCoinAddress=sp.map(
                 tkey=sp.TString,
-                tvalue=sp.TMap(sp.TNat, sp.TAddress)
+                tvalue=sp.TMap(sp.TNat, sp.TString)
             ),
             resolveUserAddress=sp.map(),
             registrarNameToAddress=sp.map(),
@@ -83,7 +90,12 @@ class RegistrarStorage(sp.Contract):
 
         newNameBytes = sp.pack(params._newRegistrarName)
 
-        sp.verify(self.data.isAddressTaken[params._registrar] == True, "Registrar should register first.")
+        sp.if ~self.data.totalRegistrarUpdates.contains(params._registrar):
+            self.data.totalRegistrarUpdates[params._registrar] = 0
+        sp.if ~self.data.resolveOldRegistrarAddress.contains(params._registrar):
+            self.data.resolveOldRegistrarAddress[params._registrar] = sp.list([])
+
+        sp.verify(self.data.isAddressTaken.get(params._registrar, False) == True, "Registrar should register first.")
         sp.verify(self.data.totalRegistrarUpdates[params._registrar]+1 <= 5, "Maximum update count reached.") #MAX_NAME_UPDATES
 
         registrarObject = self.data.Registrars[params._registrar]
@@ -101,7 +113,7 @@ class RegistrarStorage(sp.Contract):
         self.data.registrarNameToAddress[newNameBytes] = params._registrar
         self.data.totalRegistrarUpdates[params._registrar] += 1
 
-    @sp.utils.view(sp.TAddress)
+    @sp.onchain_view()
     def resolveRegistrarName(self, params):
         regNameBytes = sp.pack(params._name)
         sp.verify(self.data.registrarNameToAddress.contains(regNameBytes), "Resolver : Registrar is not yet registered for this SafleID.")
@@ -112,7 +124,7 @@ class RegistrarStorage(sp.Contract):
         self.safleIdChecks(params._safleId, params._registrar)
         self.onlyMainContract()
 
-        sp.verify(self.data.isAddressTaken[params._userAddress] == False, "SafleID already registered")
+        sp.verify(self.data.isAddressTaken.get(params._userAddress, False) == False, "SafleID already registered")
 
         idBytes = sp.pack(params._safleId)
 
@@ -126,9 +138,12 @@ class RegistrarStorage(sp.Contract):
         self.safleIdChecks(params._safleId, params._registrar)
         self.onlyMainContract()
 
+        sp.if ~self.data.totalSafleIDCount.contains(params._userAddress):
+            self.data.totalSafleIDCount[params._userAddress] = 0
+
         sp.verify(self.data.totalSafleIDCount[params._userAddress]+1 <= 5, "Maximum update count reached.") #MAX_NAME_UPDATES
-        sp.verify(self.data.isAddressTaken[params._userAddress] == True, "SafleID not registered.")
-        sp.verify(self.data.auctionProcess[params._userAddress] == False, "SafleId cannot be updated inbetween Auction.")
+        sp.verify(self.data.isAddressTaken.get(params._userAddress, False) == True, "SafleID not registered.")
+        sp.verify(self.data.auctionProcess.get(params._userAddress, False) == False, "SafleId cannot be updated inbetween Auction.")
 
         idBytes = sp.pack(params._safleId)
 
@@ -145,7 +160,7 @@ class RegistrarStorage(sp.Contract):
         self.data.totalSafleIDCount[params._userAddress] += 1
         self.data.totalSafleIdRegistered += 1
 
-    @sp.utils.view(sp.TAddress)
+    @sp.onchain_view()
     def resolveSafleId(self, params):
         idBytes = sp.pack(params._safleId)
         sp.verify(sp.len(sp.pack(params._safleId)) != 0, "Resolver : user SafleID should not be empty.")
@@ -158,7 +173,7 @@ class RegistrarStorage(sp.Contract):
 
         idBytes = sp.pack(params._safleId)
 
-        sp.verify(self.data.isAddressTaken[params._oldOwner] == True, "You are not an owner of this safleId.")
+        sp.verify(self.data.isAddressTaken.get(params._oldOwner, False) == True, "You are not an owner of this safleId.")
         sp.verify(self.data.resolveAddressFromSafleId.contains(idBytes), "This SafleId does not have an owner.")
 
         self.oldSafleIds(params._oldOwner, idBytes)
@@ -171,6 +186,9 @@ class RegistrarStorage(sp.Contract):
         self.data.resolveUserAddress[params._newOwner] = params._safleId
 
     def oldSafleIds(self, _userAddress, _safleId):
+        sp.if ~self.data.resolveOldSafleIdFromAddress.contains(_userAddress):
+            self.data.resolveOldSafleIdFromAddress[_userAddress] = sp.list([])
+
         self.data.resolveOldSafleIdFromAddress[_userAddress].push(_safleId)
         self.data.resolveOldSafleID[_safleId] = _userAddress
 
@@ -194,35 +212,48 @@ class RegistrarStorage(sp.Contract):
     def mapCoin(self, params):
         self.onlyMainContract()
 
-        sp.verify(self.data.OtherCoin[params._indexnumber].isIndexMapped == False, "This index number has already been mapped.")
-        sp.verify(self.data.isCoinMapped[params._coinName] == False, "This coin is already mapped.")
+        sp.verify(self.data.OtherCoin.get(params._indexnumber, sp.record(
+                isIndexMapped = False,
+                aliasName = "",
+                coinName = ""
+            )).isIndexMapped == False, "This index number has already been mapped.")
+        sp.verify(self.data.isCoinMapped.get(params._coinName, False) == False, "This coin is already mapped.")
         sp.verify(self.data.Registrars[params._registrar].isRegisteredRegistrar, "Invalid Registrar.")
 
-        self.data.OtherCoin[params._indexnumber].isIndexMapped = True
-        self.data.OtherCoin[params._indexnumber].aliasName = params._aliasName
-        self.data.OtherCoin[params._indexnumber].coinName = params._coinName
+        self.data.OtherCoin[params._indexnumber] = sp.record(
+            isIndexMapped = True,
+            aliasName = params._aliasName,
+            coinName = params._coinName
+        )
+
         self.data.isCoinMapped[params._coinName] = True
 
     @sp.entry_point
     def registerCoinAddress(self, params):
+        sp.set_type(params._index, sp.TNat)
+
         self.coinAddressCheck(params._userAddress, params._index, params._registrar)
         self.onlyMainContract()
 
         sp.verify(self.data.Registrars[params._registrar].isRegisteredRegistrar, "Invalid Registrar.")
-        sp.verify(self.data.auctionProcess[params._userAddress] == False)
+        sp.verify(self.data.auctionProcess.get(params._userAddress, False) == False)
         sp.verify(self.data.OtherCoin[params._index].isIndexMapped == True)
 
         safleId = self.data.resolveUserAddress[params._userAddress]
+        sp.if ~self.data.safleIdToCoinAddress.contains(safleId):
+            self.data.safleIdToCoinAddress[safleId] = sp.map({})
         self.data.safleIdToCoinAddress[safleId][params._index] = params._address
         self.data.coinAddressToSafleId[params._address] = safleId
 
     @sp.entry_point
     def updateCoinAddress(self, params):
+        sp.set_type(params._index, sp.TNat)
+
         self.coinAddressCheck(params._userAddress, params._index, params._registrar)
         self.onlyMainContract()
 
         sp.verify(self.data.Registrars[params._registrar].isRegisteredRegistrar, "Invalid Registrar")
-        sp.verify(self.data.auctionProcess[params._userAddress] == False)
+        sp.verify(self.data.auctionProcess.get(params._userAddress, False) == False)
         sp.verify(self.data.OtherCoin[params._index].isIndexMapped == True, "This index number is not mapped.")
 
         safleId = self.data.resolveUserAddress[params._userAddress]
@@ -231,10 +262,10 @@ class RegistrarStorage(sp.Contract):
         self.data.safleIdToCoinAddress[safleId][params._index] = params._newAddress
         self.data.coinAddressToSafleId[params._newAddress] = safleId
 
-    @sp.utils.view(sp.TString)
+    @sp.onchain_view()
     def coinAddressToId(self, params):
         sp.result(self.data.coinAddressToSafleId[params._address])
 
-    @sp.utils.view(sp.TAddress)
+    @sp.onchain_view()
     def idToCoinAddress(self, params):
         sp.result(self.data.safleIdToCoinAddress[params._safleId][params._index])
