@@ -16,7 +16,7 @@ class CheckingContract(sp.Contract):
         lower_chars = sp.local("lower_chars", [])
         sp.for idx in sp.range(0, sp.len(string)):
             lower_chars.value.push(char_to_lower[sp.slice(string, idx, 1).open_some()])
-        sp.result(sp.concat(lower_chars.value))
+        sp.result(sp.concat(lower_chars.value.rev()))
 
     @sp.global_lambda
     def checkAlphaNumeric(safleId):
