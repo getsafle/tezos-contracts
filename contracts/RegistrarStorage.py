@@ -62,7 +62,7 @@ class RegistrarStorage(sp.Contract):
     def safleIdChecks(self, _safleId, _registrar):
         idBytes = sp.pack(_safleId)
 
-        sp.verify(~self.data.Registrars.contains(_registrar), "Invalid Registrar.")
+        sp.verify(self.data.Registrars.contains(_registrar), "Invalid Registrar.")
         sp.verify(~self.data.registrarNameToAddress.contains(idBytes), "This SafleId is taken by a Registrar.")
         sp.verify(~self.data.resolveAddressFromSafleId.contains(idBytes), "This SafleId is already registered.")
         sp.verify(~self.data.unavailableSafleIds.contains(_safleId), "SafleId is already used once, not available now")
@@ -71,7 +71,7 @@ class RegistrarStorage(sp.Contract):
         sp.verify(sp.sender == self.data.auctionContractAddress)
 
     def coinAddressCheck(self, _userAddress, _index, _registrar):
-        sp.verify(~self.data.Registrars.contains(_registrar), "Invalid Registrar")
+        sp.verify(self.data.Registrars.contains(_registrar), "Invalid Registrar")
         sp.verify(self.data.OtherCoin.contains(_index), "This index number is not mapped.");
         sp.if self.data.auctionProcess.contains(_userAddress):
             sp.verify(~self.data.auctionProcess[_userAddress])
