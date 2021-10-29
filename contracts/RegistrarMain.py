@@ -1,6 +1,5 @@
 import smartpy as sp
 
-registrarStorage = sp.io.import_stored_contract("RegistrarStorage.py")
 checker = sp.io.import_stored_contract("CheckingClass.py")
 
 
@@ -120,33 +119,3 @@ class RegistrarMain(sp.Contract):
         c = sp.contract(sp.TRecord(num = sp.TInt),self.data.registrarStorageContractAddress,entry_point="updateCoinAddress").open_some()
         mydata = sp.record(_userAddress,_index,_address.toLower(), sp.sender)
         sp.transfer(mydata,sp.mutez(0),c)
-
-
-@sp.add_test(name="SafleID Main")
-def test():
-    scenario = sp.test_scenario()
-    scenario.table_of_contents()
-    scenario.h1("Safle Main")
-
-    # Initialize test admin addresses
-    owner = sp.test_account("owner")
-    seller = sp.test_account("seller")
-
-    mainContract = RegistrarMain()
-    scenario += mainContract
-    mainContract.setOwner().run(sender=owner)
-
-    storageContract = registrarStorage.RegistrarStorage()
-    scenario += storageContract
-
-    scenario += storageContract.setOwner().run(sender=owner)
-    scenario += storageContract.upgradeMainContractAddress(
-        _mainContractAddress=mainContract.address
-    ).run(sender=owner)
-
-    scenario += mainContract.setStorageContract(
-        _registrarStorageContract=storageContract.address
-    ).run(sender=owner)
-    scenario += mainContract.registerRegistrar(
-        _registrarName="seller"
-    ).run(sender=seller)
