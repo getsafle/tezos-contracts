@@ -96,3 +96,12 @@ def test():
 
     scenario.h4("Fetching Address of a SafleID")
     scenario.show(storageContract.resolveSafleId(sp.record(_safleId="user")))
+
+    scenario.h4("Updating to a new Main Contract")
+    newMainContract = registrarMain.RegistrarMain(
+        _ownerAddress=owner.address, _walletAddress=wallet.address
+    )
+    scenario += newMainContract
+    scenario += storageContract.upgradeMainContractAddress(
+        _mainContractAddress = newMainContract.address
+    ).run(sender=owner)
