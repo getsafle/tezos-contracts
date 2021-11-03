@@ -55,7 +55,7 @@ class Auction(checkingContract.CheckingContract):
             highestBid=0,
             totalBids=0,
             totalBidders=0,
-            bidders=[],
+            biddersArray=[],
             returnBidsOfOther=False,
             auctionLastFor=sp.timestamp_from_utc_now().add_seconds(params._auctionSeconds),
         )
@@ -79,21 +79,21 @@ class Auction(checkingContract.CheckingContract):
         )
 
     @sp.entry_point
-    def bidForSafleId(self, _safleId):
-        lower = _safleId.toLower()
-        bidAmount = sp.value
-        sp.verify(self.data.safleIdToAddress[lower] != address(0x0))
-        sp.verify(self.data.isContract(sp.sender)==False)
-        
+    def bidForSafleId(self, params):
+        lower = self.toLower(params._safleId)
+        bidAmount = sp.amount
+
+        sp.verify(self.data.safleIdToAddress.contains(lower))
+        sp.verify(~self.isContract(sp.sender))
 
         auctioner = self.data.safleIdToAddress[lower]
 
-        sp.verify(self.data.auction[auctioner].isAuctionLive)
-        sp.verify(self.data.auction[auctioner].auctionConductor != sp.sender)
-        sp.verify(self.data.bidAmount + self.data.auction[auctioner].bidRate[sp.sender]> self.data.auction[auctioner].highestBid)
-        sp.verify(self.data.now < self.data.auction[auctioner].auctionLastFor)
+        sp.verify(self.data.auction[auctioner].isAuctionLive, "Auction is not live")
+        sp.verify(self.data.auction[auctioner].auctionConductor != sp.sender, "You cannot bid for your SafleId")
+        sp.verify(bidAmount + self.data.auction[auctioner].bidRate.get(sp.sender, sp.mutez(0)) > self.data.auction[auctioner].highestBid, "Bid amount should be greater than the current bidrate.")
+        sp.verify(sp.timestamp_from_utc_now() < self.data.auction[auctioner].auctionLastFor, "Auction time is completed")
 
-        if(self.data.auction[auctioner].bidRate[sp.sender]==0):
+        if(self.data.auction[auctioner].bidRate[sp.sender]==sp.mutez(0)):
             self.data.auction[auctioner].bidRate[sp.sender] = bidAmount
             self.data.auction[auctioner].highestBid = bidAmount
             self.data.auction[auctioner].biddersArray.push(sp.sender)
