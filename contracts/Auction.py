@@ -28,6 +28,18 @@ class Auction(checkingContract.CheckingContract):
             alreadyActiveAuction=sp.TSet,
             safleIdToAddress=sp.map()
         )
+    
+    def validateAuctionData(self, _safleId, _auctionSeconds):
+        sp.verify(sp.len(_safleId) <= 16, "Length of the safleId should be betweeb 4-16 characters.")
+        sp.verify(_auctionSeconds > 300 & _auctionSeconds < 7776000, "Auction time should be in between 330 to 7776000 seconds.")
+        sp.verify(~self.data.alreadyActiveAuction.contains(sp.sender), "Auction is already in process by this user.")
+        
+        safleAddress = sp.view(
+            "resolveSafleId",
+            self.data.storageContract,
+            sp.record(_safleId=_safleId)
+        ).open_some()
+        sp.verify(safleAddress == sp.sender, "You are not an owner of this SafleId.")
 
     @sp.entry_point
     def auctionSafleId(self, _safleId, _auctionSeconds):
