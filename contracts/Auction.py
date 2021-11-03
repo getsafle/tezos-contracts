@@ -1,11 +1,32 @@
 import smartpy as sp
 
+checkingContract = sp.io.import_stored_contract("CheckingContract.py")
 
-class Auction(sp.contract):
-    def __init__(self, _storageContract):
+
+class Auction(checkingContract.CheckingContract):
+    def __init__(self, _ownerAddress, _storageContract):
         self.init(
-            contractOwner=sp.sender,
-            storageContract=_storageContract
+            contractOwner=_ownerAddress,
+            storageContract=_storageContract,
+            auction=sp.map(
+                tkey=sp.TAddress,
+                tvalue=sp.TRecord(
+                    isAuctionLive=sp.TBool,
+                    auctionConductor=sp.TAddress,
+                    safleId=sp.TString,
+                    bidRate=sp.map(),
+                    higestBidderAddress=sp.TAddress,
+                    highestBid=sp.TNat,
+                    totalBids=sp.TNat,
+                    totalBidders=sp.TNat,
+                    bidders=sp.TList,
+                    returnBidsOfOther=sp.TBool,
+                    auctionLastFor=sp.TNat,
+                    safleIdTransferred=sp.TBool
+                )
+            ),
+            alreadyActiveAuction=sp.TSet,
+            safleIdToAddress=sp.map()
         )
 
     @sp.entry_point
