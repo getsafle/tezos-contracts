@@ -42,15 +42,41 @@ class Auction(checkingContract.CheckingContract):
         sp.verify(safleAddress == sp.sender, "You are not an owner of this SafleId.")
 
     @sp.entry_point
-    def auctionSafleId(self, _safleId, _auctionSeconds):
-        lower = _safleId.toLower()
-        self.data.auction[sp.sender].isAuctionLive = True
-        self.data.auction[sp.sender].auctionConductor = sp.sender
-        self.data.auction[sp.sender].safleId = lower
-        self.data.auction[sp.sender].auctionLastFor = now + _auctionSeconds
+    def auctionSafleId(self, params):
+        self.validateAuctionData(params._safleId, params._auctionSeconds)
+
+        lower = self.toLower(params._safleId)
+        self.data.auction[sp.sender] = sp.record(
+            isAuctionLive=True,
+            auctionConductor=sp.sender,
+            safleId=lower,
+            bidRate=sp.map(),
+            higestBidderAddress=sp.sender,
+            highestBid=0,
+            totalBids=0,
+            totalBidders=0,
+            bidders=[],
+            returnBidsOfOther=False,
+            auctionLastFor=sp.timestamp_from_utc_now().add_seconds(params._auctionSeconds),
+        )
         self.data.safleIdToAddress[lower] = sp.sender
         self.data.alreadyActiveAuction[sp.sender] = True
-        self.data.storageContract.auctionInProcess(sp.sender, lower)
+        storageContract = sp.contract(
+            sp.TRecord(
+                _safleId=sp.TString,
+                _safleIdOwner=sp.TAddress
+            ),
+            self.data.storageContract,
+            entry_point="auctionInProcess"
+        ).open_some()
+        sp.transfer(
+            sp.record(
+                _safleId=lower,
+                _safleIdOwner=sp.sender
+            ),
+            sp.mutez(0),
+            storageContract
+        )
 
     @sp.entry_point
     def bidForSafleId(self, _safleId):
