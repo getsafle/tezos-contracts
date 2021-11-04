@@ -177,11 +177,7 @@ class Auction(checkingContract.CheckingContract):
         thisAuction = self.data.auction[params._auctioner]
         sp.result(thisAuction.biddersArray)
 
-    @sp.entry_point
-    def getBidRate(self,_auctioner, _bidder):
-        sp.verify((self.data.auction[_auctioner].auctionConductor != address(0x0)))
-        return self.data.auction[_auctioner].bidRate[_bidder]
-
-    @sp.add_test(name="SafleID Auction")
-    def test():
-      pass
+    @sp.onchain_view()
+    def getBidRate(self, params):
+        thisAuction = self.data.auction[params._auctioner]
+        sp.result(thisAuction.bidRate[params._bidder])
