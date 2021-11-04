@@ -120,6 +120,30 @@ class Auction(checkingContract.CheckingContract):
         thisAuction.returnBidsOfOther = True
         self.transferSafleIdToWinner()
 
+    @sp.sub_entry_point
+    def transferSafleIdToWinner(self):
+        thisAuction = self.data.auction[sp.sender]
+        sp.send(thisAuction.auctionConductor, thisAuction.highestBid)
+        thisAuction.safleIdTransferred = True
+        storageContract = sp.contract(
+            sp.TRecord(
+                _safleId=sp.TString,
+                _oldOwner=sp.TAddress,
+                _newOwner=sp.TAddress
+            ),
+            self.data.storageContract,
+            entry_point="transferSafleId"
+        ).open_some()
+        sp.transfer(
+            sp.record(
+                _safleId=thisAuction.safleId,
+                _oldOwner=thisAuction.auctionConductor,
+                _newOwner=thisAuction.higestBidderAddress
+            ),
+            sp.mutez(0),
+            storageContract
+        )
+
     @sp.entry_point
     def directlyTransferSafleId(_safleId, _newOwner):
         return True
