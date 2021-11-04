@@ -19,7 +19,7 @@ class Auction(checkingContract.CheckingContract):
                     highestBid=sp.TNat,
                     totalBids=sp.TNat,
                     totalBidders=sp.TNat,
-                    bidders=sp.TList,
+                    biddersArray=sp.TList,
                     returnBidsOfOther=sp.TBool,
                     auctionLastFor=sp.TNat,
                     safleIdTransferred=sp.TBool
@@ -106,20 +106,19 @@ class Auction(checkingContract.CheckingContract):
 
     @sp.entry_point
     def refundOtherBidders(self):
-        sp.verify(self.data.auction[sp.sender].returnBidsOfOther ==  False)
-        sp.verify(self.data.auction[sp.sender].auctionConductor == sp.sender)
-        sp.verify(self.data.auction[sp.sender].biddersArray.length > 0)
+        thisAuction = self.data.auction[sp.sender]
+        sp.verify(thisAuction.returnBidsOfOther ==  False)
+        sp.verify(thisAuction.auctionConductor == sp.sender)
+        sp.verify(sp.len(thisAuction.biddersArray) > 0)
 
-        for i in range(self.data.auction[sp.sender].biddersArray.length):
-            if(self.data.auction[sp.sender].biddersArray[i] != self.data.auction[sp.sender].higestBidderAddress):
-                bidderAmount = self.data.auction[sp.sender].bidRate[self.data.auction[sp.sender].biddersArray[i]]
-                self.data.auction[sp.sender].biddersArray[i].transfer(bidderAmount)
-                self.data.alreadyActiveAuction[sp.sender] = False
+        sp.for i in sp.range(0, sp.len(thisAuction.biddersArray)):
+            sp.if thisAuction.biddersArray[i] != thisAuction.higestBidderAddress):
+                bidderAmount = thisAuction.bidRate[thisAuction.biddersArray[i]]
+                sp.send(thisAuction.biddersArray[i], bidderAmount)
+                self.data.alreadyActiveAuction.remove(sp.sender)
 
-        self.data.auction[sp.sender].returnBidsOfOther = True
-        self.data.auction[sp.sender].auctionConductor.transfer(self.data.auction[sp.sender].highestBid)
-        self.data.auction[sp.sender].safleIdTransferred = True
-        #transfer in storage contract
+        thisAuction.returnBidsOfOther = True
+        self.transferSafleIdToWinner()
 
     @sp.entry_point
     def directlyTransferSafleId(_safleId, _newOwner):
