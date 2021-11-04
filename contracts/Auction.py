@@ -172,10 +172,10 @@ class Auction(checkingContract.CheckingContract):
             storageContract
         )
 
-    @sp.entry_point
-    def arrayOfbidders(self,_auctioner):
-        sp.verify((self.data.auction[_auctioner].auctionConductor != address(0x0)))
-        return self.data.auction[_auctioner].biddersArray
+    @sp.onchain_view()
+    def arrayOfbidders(self, params):
+        thisAuction = self.data.auction[params._auctioner]
+        sp.result(thisAuction.biddersArray)
 
     @sp.entry_point
     def getBidRate(self,_auctioner, _bidder):
