@@ -145,8 +145,32 @@ class Auction(checkingContract.CheckingContract):
         )
 
     @sp.entry_point
-    def directlyTransferSafleId(_safleId, _newOwner):
-        return True
+    def directlyTransferSafleId(self, params):
+        safleAddress = sp.view(
+            "resolveSafleId",
+            self.data.storageContract,
+            sp.record(_safleId=params._safleId)
+        ).open_some()
+        sp.verify(safleAddress == sp.sender, "You are not an owner of this SafleId.")
+
+        storageContract = sp.contract(
+            sp.TRecord(
+                _safleId=sp.TString,
+                _oldOwner=sp.TAddress,
+                _newOwner=sp.TAddress
+            ),
+            self.data.storageContract,
+            entry_point="transferSafleId"
+        ).open_some()
+        sp.transfer(
+            sp.record(
+                _safleId=params._safleId,
+                _oldOwner=sp.sender,
+                _newOwner=params._newOwner
+            ),
+            sp.mutez(0),
+            storageContract
+        )
 
     @sp.entry_point
     def arrayOfbidders(self,_auctioner):
