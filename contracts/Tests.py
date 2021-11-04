@@ -2,6 +2,7 @@ import smartpy as sp
 
 registrarMain = sp.io.import_stored_contract("RegistrarMain.py")
 registrarStorage = sp.io.import_stored_contract("RegistrarStorage.py")
+auctionContract = sp.io.import_stored_contract("Auction.py")
 checkingContract = sp.io.import_stored_contract("CheckingContract.py")
 
 
@@ -105,3 +106,84 @@ def test():
     scenario += storageContract.upgradeMainContractAddress(
         _mainContractAddress = newMainContract.address
     ).run(sender=owner)
+
+
+@sp.add_test(name="SafleID Auction")
+def test():
+    scenario = sp.test_scenario()
+    scenario.h1("Safle Auction")
+
+    owner = sp.test_account("owner")
+    registrar = sp.test_account("registrar")
+    wallet = sp.test_account("wallet")
+    oldSafleUser = sp.test_account("oldSafleUser")
+    bidder1 = sp.test_account("bidder1")
+    bidder2 = sp.test_account("bidder2")
+    bidder3 = sp.test_account("bidder3")
+
+    scenario.h2("RegistrarMain Contract")
+    mainContract = registrarMain.RegistrarMain(
+        _ownerAddress=owner.address, _walletAddress=wallet.address
+    )
+    scenario += mainContract
+
+    scenario.h2("RegistrarStorage Contract")
+    storageContract = registrarStorage.RegistrarStorage(
+        _ownerAddress=owner.address, _mainContractAddress=mainContract.address
+    )
+    scenario += storageContract
+
+    scenario.h2("Auction Contract")
+    auction = auctionContract.Auction(
+        _ownerAddress=owner.address, _storageContract=storageContract.address
+    )
+    scenario += auction
+
+    scenario.h4("Setting Storage contract address in the Main contract")
+    mainContract.setStorageContract(
+        _registrarStorageContract=storageContract.address
+    ).run(sender=owner)
+
+    # Initial Setup
+    mainContract.setSafleIdFees(_amount=1000).run(sender=owner)
+    mainContract.setRegistrarFees(_amount=100000).run(sender=owner)
+    mainContract.registerRegistrar(_registrarName="registrar").run(
+        sender=registrar, amount=sp.mutez(100000)
+    )
+    mainContract.registerSafleId(
+        _safleId="oldSafleUser", _userAddress=oldSafleUser.address
+    ).run(sender=registrar, amount=sp.mutez(1000))
+
+    scenario.h4("Starting an Auction")
+    scenario += auction.auctionSafleId(
+        _safleId="oldSafleUser", _auctionSeconds=600
+    ).run(sender=oldSafleUser)
+
+    scenario.h4("Bidding on the SafleID")
+    scenario += auction.bidForSafleId(
+        _safleId="oldSafleUser"
+    ).run(sender=bidder1, amount=sp.mutez(100))
+    scenario += auction.bidForSafleId(
+        _safleId="oldSafleUser"
+    ).run(sender=bidder2, amount=sp.mutez(200))
+    scenario += auction.bidForSafleId(
+        _safleId="oldSafleUser"
+    ).run(sender=bidder3, amount=sp.mutez(300))
+    scenario += auction.bidForSafleId(
+        _safleId="oldSafleUser"
+    ).run(sender=bidder1, amount=sp.mutez(1000))
+
+    scenario.h4("Refunding the bidders except the winner")
+    scenario += auction.refundOtherBidders().run(sender=oldSafleUser)
+
+    scenario.h4("Directly sending the safleID to the old user")
+    scenario += auction.directlyTransferSafleId(
+        _safleId="oldSafleUser",
+        _newOwner=oldSafleUser.address
+    ).run(sender=bidder1)
+
+    scenario.h4("Getting the array of all the bidders")
+    scenario.show(auction.arrayOfbidders(sp.record(_auctioner=oldSafleUser.address)))
+
+    scenario.h4("Getting the current bid rate of a bidder")
+    scenario.show(auction.getBidRate(sp.record(_auctioner=oldSafleUser.address, _bidder=bidder1.address)))
