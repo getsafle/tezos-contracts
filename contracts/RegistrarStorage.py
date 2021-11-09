@@ -49,6 +49,28 @@ class RegistrarStorage(sp.Contract):
     def onlyMainContract(self):
         sp.verify(self.data.mainContract == sp.sender)
 
+    def registrarChecks(self, _registrarName):
+        regNameBytes = sp.pack(_registrarName)
+        sp.verify(~self.data.registrarNameToAddress.contains(regNameBytes), "Registrar name is already taken.")
+        sp.verify(~self.data.resolveAddressFromSafleId.contains(regNameBytes), "This Registrar name is already registered as an SafleID.")
+
+    def safleIdChecks(self, _safleId, _registrar):
+        idBytes = sp.pack(_safleId)
+
+        sp.verify(self.data.Registrars.contains(_registrar), "Invalid Registrar.")
+        sp.verify(~self.data.registrarNameToAddress.contains(idBytes), "This SafleId is taken by a Registrar.")
+        sp.verify(~self.data.resolveAddressFromSafleId.contains(idBytes), "This SafleId is already registered.")
+        sp.verify(~self.data.unavailableSafleIds.contains(_safleId), "SafleId is already used once, not available now")
+
+    def auctionContract(self):
+        sp.verify(sp.sender == self.data.auctionContractAddress)
+
+    def coinAddressCheck(self, _userAddress, _index, _registrar):
+        sp.verify(self.data.Registrars.contains(_registrar), "Invalid Registrar")
+        sp.verify(self.data.OtherCoin.contains(_index), "This index number is not mapped.");
+        sp.if self.data.auctionProcess.contains(_userAddress):
+            sp.verify(~self.data.auctionProcess[_userAddress])
+
     @sp.entry_point
     def upgradeMainContractAddress(self, params):
         self.data.mainContract = params._mainContractAddress
