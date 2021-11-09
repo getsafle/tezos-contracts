@@ -4,52 +4,65 @@ checker = sp.io.import_stored_contract("CheckingClass.py")
 
 
 class RegistrarMain(sp.Contract):
-    def __init__(self):
+    def __init__(self, _ownerAddress, _walletAddress):
         self.init(
-            contractOwner=sp.address("tz1"),
-            walletAddress=sp.address("tz1"),
+            contractOwner=_ownerAddress,
+            walletAddress=_walletAddress,
             safleIdRegStatus=False,
             registrarStorageContractAddress=sp.address("tz1"),
+            safleIdFees=sp.mutez(0),
             registrarFees=sp.mutez(0),
             storageContractAddress=False
         )
+
+    def onlyOwner(self):
+        sp.verify(self.data.contractOwner == sp.sender, "sender is not a contract owner")
+
+    def checkStorageContractAddress(self):
+        sp.verify(self.data.storageContractAddress, "storage address not set")
+
+    def checkRegistrationStatus(self):
+        sp.verify(self.data.safleIdRegStatus == False, "SafleId Registration is Paused")
+
+    def registrarChecks(self, _registrarName):
+        sp.verify(sp.amount >= self.data.registrarFees, "Registration fees not matched.")
+        sp.verify(checker.isSafleIdValid(_registrarName))
+
+    def safleIdChecks(self, _safleId):
+        sp.verify(sp.amount >= self.data.safleIdFees, "Registration fees not matched.")
+        sp.verify(checker.isSafleIdValid(_safleId))
 
     @sp.entry_point
     def setOwner(self):
         sp.verify(self.data.contractOwner == sp.address("tz1"), "Owner can be set only once.")
         self.data.contractOwner = sp.sender
 
-    def onlyOwner(self):
-        sp.verify(self.data.contractOwner == sp.sender)
+    @sp.entry_point
+    def setSafleIdFees(self, params):
+        self.onlyOwner()
 
-    def setSafleIdFees(self, _amount):
-        sp.verify(_amount > 0)
-        self.data.safleIdFees = _amount
+        sp.verify(params._amount >= 0, "Please set a fees for SafleID registration.")
+        self.data.safleIdFees = sp.utils.nat_to_mutez(params._amount)
 
-    def setRegistrarFees(self, _amount):
-        sp.verify(_amount > 0)
-        self.data.registrarFees = _amount
+    @sp.entry_point
+    def setRegistrarFees(self, params):
+        self.onlyOwner()
 
-    def checkStorageContractAddress(self):
-        sp.verify(self.data.storageContractAddress, "storage address not set")
+        sp.verify(params._amount >= 0, "Please set a fees for Registrar registration.")
+        self.data.registrarFees = sp.utils.nat_to_mutez(params._amount)
 
-    def checkRegistrationStatus(self):
-        sp.verify(self.data.safleIdRegStatus == sp.bool(False))
+    @sp.entry_point
+    def toggleRegistrationStatus(self):
+        self.onlyOwner()
 
-    def registrarChecks(self, _registrarName):
-        sp.verify(sp.amount >= self.data.registrarFees, "Registration fees not matched.")
-        sp.verify(checker.isSafleIdValid(_registrarName=_registrarName))
-
-    def toggleRegisterationStatus(self):
-        self.data.safleIdRegStatus = not (self.data.safleIdRegStatus)
-        return True
+        self.data.safleIdRegStatus = ~(self.data.safleIdRegStatus)
 
     @sp.entry_point
     def registerRegistrar(self, params):
         self.registrarChecks(params._registrarName)
         self.checkRegistrationStatus()
         self.checkStorageContractAddress()
-        
+
         lower = checker.toLower(params._registrarName)
         sp.send(self.data.walletAddress, sp.balance)
         registrarStorageContract = sp.contract(
@@ -69,53 +82,175 @@ class RegistrarMain(sp.Contract):
             registrarStorageContract
         )
 
-    def updateRegistrar(self, _registrarName):
-        lower = _registrarName.toLower()
-        c = sp.contract(sp.TRecord(num = sp.TInt),self.data.registrarStorageContractAddress,entry_point="updateRegistrar").open_some()
-        mydata = sp.record(sp.sender,lower)
-        sp.transfer(mydata,sp.mutez(0),c)
+    @sp.entry_point
+    def updateRegistrar(self, params):
+        self.registrarChecks(params._registrarName)
+        self.checkRegistrationStatus()
+        self.checkStorageContractAddress()
 
-    def registerSafleId(self, _userAddress,_safleId):
-        lower = _safleId.toLower()
-        c = sp.contract(sp.TRecord(num = sp.TInt),self.data.registrarStorageContractAddress,entry_point="registerSafleId").open_some()
-        mydata = sp.record(sp.sender,_userAddress,lower)
-        sp.transfer(mydata,sp.mutez(0),c)
+        lower = checker.toLower(params._registrarName)
+        sp.send(self.data.walletAddress, sp.balance)
+        registrarStorageContract = sp.contract(
+            sp.TRecord(
+                _registrar=sp.TAddress,
+                _newRegistrarName=sp.TString
+            ),
+            self.data.registrarStorageContractAddress,
+            entry_point="updateRegistrar"
+        ).open_some()
+        sp.transfer(
+            sp.record(
+                _registrar=sp.sender,
+                _newRegistrarName=lower
+            ),
+            sp.mutez(0),
+            registrarStorageContract
+        )
 
-    def updateSafleId(self, _userAddress,_newSafleId):
-        lower = _newSafleId.toLower()
-        c = sp.contract(sp.TRecord(num = sp.TInt),self.data.registrarStorageContractAddress,entry_point="updateSafleId").open_some()
-        mydata = sp.record(sp.sender,_userAddress,lower)
-        sp.transfer(mydata,sp.mutez(0),c)
+    @sp.entry_point
+    def registerSafleId(self, params):
+        self.safleIdChecks(params._safleId)
+        self.checkRegistrationStatus()
+        self.checkStorageContractAddress()
+
+        lower = checker.toLower(params._safleId)
+        sp.send(self.data.walletAddress, sp.balance)
+        registrarStorageContract = sp.contract(
+            sp.TRecord(
+                _registrar=sp.TAddress,
+                _userAddress=sp.TAddress,
+                _safleId=sp.TString
+            ),
+            self.data.registrarStorageContractAddress,
+            entry_point="registerSafleId"
+        ).open_some()
+        sp.transfer(
+            sp.record(
+                _registrar=sp.sender,
+                _userAddress=params._userAddress,
+                _safleId=lower
+            ),
+            sp.mutez(0),
+            registrarStorageContract
+        )
+
+    @sp.entry_point
+    def updateSafleId(self, params):
+        self.safleIdChecks(params._newSafleId)
+        self.checkRegistrationStatus()
+        self.checkStorageContractAddress()
+
+        lower = checker.toLower(params._newSafleId)
+        sp.send(self.data.walletAddress, sp.balance)
+        registrarStorageContract = sp.contract(
+            sp.TRecord(
+                _registrar=sp.TAddress,
+                _userAddress=sp.TAddress,
+                _safleId=sp.TString
+            ),
+            self.data.registrarStorageContractAddress,
+            entry_point="updateSafleId"
+        ).open_some()
+        sp.transfer(
+            sp.record(
+                _registrar=sp.sender,
+                _userAddress=params._userAddress,
+                _safleId=lower
+            ),
+            sp.mutez(0),
+            registrarStorageContract
+        )
 
     @sp.entry_point
     def setStorageContract(self, params):
+        self.onlyOwner()
+
         self.data.registrarStorageContractAddress = params._registrarStorageContract
         self.data.storageContractAddress = True
 
-    def updateWalletAddress(self, _walletAddress):
-        self.data.walletAddress = _walletAddress
+    @sp.entry_point
+    def updateWalletAddress(self, params):
+        self.onlyOwner()
 
-    def mapCoins(self, _indexNumber, _blockchainName, _aliasName):
-        sp.verify(_indexNumber != 0)
-        c = sp.contract(sp.TRecord(num = sp.TInt),self.data.registrarStorageContractAddress,entry_point="mapCoin").open_some()
-        mydata = sp.record(_indexNumber,_blockchainName.toLower(),_aliasName.toLower(), sp.sender)
-        sp.transfer(mydata,sp.mutez(0),c)
-        return True
+        sp.verify(~checker.isContract(params._walletAddress))
+        self.data.walletAddress = params._walletAddress
 
-    def registerCoinAddress(self, _userAddress, _index, _address):
-        length = len(_address)
-        sp.verify(_index != 0)
-        sp.verify(_userAddress != 0)
-        sp.verify(length > 0)
-        c = sp.contract(sp.TRecord(num = sp.TInt),self.data.registrarStorageContractAddress,entry_point="registerCoinAddress").open_some()
-        mydata = sp.record(_userAddress,_index,_address.toLower(), sp.sender)
-        sp.transfer(mydata,sp.mutez(0),c)
+    @sp.entry_point
+    def mapCoins(self, params):
+        lowerBlockchainName = checker.toLower(params._blockchainName)
+        lowerAliasName = checker.toLower(params._aliasName)
+        sp.verify(params._indexNumber != 0)
+        sp.verify(checker.checkAlphaNumeric(lowerBlockchainName) & checker.checkAlphaNumeric(lowerAliasName), "Only alphanumeric allowed in blockchain name and alias name")
+        
+        registrarStorageContract = sp.contract(
+            sp.TRecord(
+                _indexnumber=sp.TNat,
+                _coinName=sp.TString,
+                _aliasName=sp.TString,
+                _registrar=sp.TAddress
+            ),
+            self.data.registrarStorageContractAddress,
+            entry_point="mapCoin"
+        ).open_some()
+        sp.transfer(
+            sp.record(
+                _indexnumber=params._indexNumber,
+                _coinName=lowerBlockchainName,
+                _aliasName=lowerAliasName,
+                _registrar=sp.sender
+            ),
+            sp.mutez(0),
+            registrarStorageContract
+        )
 
-    def updateCoinAddress(self, _userAddress, _index, _address):
-        length = len(_address)      
-        sp.verify(_index != 0)
-        sp.verify(_userAddress != 0)
-        sp.verify(length > 0)                     #confirm why? should be a fixed length string
-        c = sp.contract(sp.TRecord(num = sp.TInt),self.data.registrarStorageContractAddress,entry_point="updateCoinAddress").open_some()
-        mydata = sp.record(_userAddress,_index,_address.toLower(), sp.sender)
-        sp.transfer(mydata,sp.mutez(0),c)
+    @sp.entry_point
+    def registerCoinAddress(self, params):
+        lowerAddress = checker.toLower(params._address)
+        sp.verify(params._index != 0)
+        
+        registrarStorageContract = sp.contract(
+            sp.TRecord(
+                _userAddress=sp.TAddress,
+                _index=sp.TNat,
+                _address=sp.TString,
+                _registrar=sp.TAddress
+            ),
+            self.data.registrarStorageContractAddress,
+            entry_point="registerCoinAddress"
+        ).open_some()
+        sp.transfer(
+            sp.record(
+                _userAddress=params._userAddress,
+                _index=params._index,
+                _address=lowerAddress,
+                _registrar=sp.sender
+            ),
+            sp.mutez(0),
+            registrarStorageContract
+        )
+
+    @sp.entry_point
+    def updateCoinAddress(self, params):
+        lowerAddress = checker.toLower(params._address)
+        sp.verify(params._index != 0)
+        
+        registrarStorageContract = sp.contract(
+            sp.TRecord(
+                _userAddress=sp.TAddress,
+                _index=sp.TNat,
+                _newAddress=sp.TString,
+                _registrar=sp.TAddress
+            ),
+            self.data.registrarStorageContractAddress,
+            entry_point="updateCoinAddress"
+        ).open_some()
+        sp.transfer(
+            sp.record(
+                _userAddress=params._userAddress,
+                _index=params._index,
+                _newAddress=lowerAddress,
+                _registrar=sp.sender
+            ),
+            sp.mutez(0),
+            registrarStorageContract
+        )
