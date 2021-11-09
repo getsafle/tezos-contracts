@@ -139,9 +139,12 @@ def test():
     )
     scenario += auction
 
-    scenario.h4("Setting Storage contract address in the Main contract")
+    scenario.h4("Setting Contracts to each other")
     mainContract.setStorageContract(
         _registrarStorageContract=storageContract.address
+    ).run(sender=owner)
+    storageContract.setAuctionContract(
+        _auctionAddress=auction.address
     ).run(sender=owner)
 
     # Initial Setup
@@ -156,21 +159,21 @@ def test():
 
     scenario.h4("Starting an Auction")
     scenario += auction.auctionSafleId(
-        _safleId="oldSafleUser", _auctionSeconds=600
+        _safleId="oldsafleuser", _auctionSeconds=600
     ).run(sender=oldSafleUser)
 
     scenario.h4("Bidding on the SafleID")
     scenario += auction.bidForSafleId(
-        _safleId="oldSafleUser"
+        _safleId="oldsafleuser"
     ).run(sender=bidder1, amount=sp.mutez(100))
     scenario += auction.bidForSafleId(
-        _safleId="oldSafleUser"
+        _safleId="oldsafleuser"
     ).run(sender=bidder2, amount=sp.mutez(200))
     scenario += auction.bidForSafleId(
-        _safleId="oldSafleUser"
+        _safleId="oldsafleuser"
     ).run(sender=bidder3, amount=sp.mutez(300))
     scenario += auction.bidForSafleId(
-        _safleId="oldSafleUser"
+        _safleId="oldsafleuser"
     ).run(sender=bidder1, amount=sp.mutez(1000))
 
     scenario.h4("Refunding the bidders except the winner")
@@ -178,7 +181,7 @@ def test():
 
     scenario.h4("Directly sending the safleID to the old user")
     scenario += auction.directlyTransferSafleId(
-        _safleId="oldSafleUser",
+        _safleId="oldsafleuser",
         _newOwner=oldSafleUser.address
     ).run(sender=bidder1)
 

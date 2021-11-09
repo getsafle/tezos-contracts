@@ -14,24 +14,24 @@ class Auction(checkingContract.CheckingContract):
                     isAuctionLive=sp.TBool,
                     auctionConductor=sp.TAddress,
                     safleId=sp.TString,
-                    bidRate=sp.map(),
+                    bidRate=sp.TMap(sp.TAddress, sp.TMutez),
                     higestBidderAddress=sp.TAddress,
-                    highestBid=sp.TNat,
+                    highestBid=sp.TMutez,
                     totalBids=sp.TNat,
                     totalBidders=sp.TNat,
-                    biddersArray=sp.TList,
+                    biddersArray=sp.TList(sp.TAddress),
                     returnBidsOfOther=sp.TBool,
-                    auctionLastFor=sp.TNat,
+                    auctionLastFor=sp.TTimestamp,
                     safleIdTransferred=sp.TBool
                 )
             ),
-            alreadyActiveAuction=sp.TSet,
+            alreadyActiveAuction=sp.set([]),
             safleIdToAddress=sp.map()
         )
     
     def validateAuctionData(self, _safleId, _auctionSeconds):
         sp.verify(sp.len(_safleId) <= 16, "Length of the safleId should be betweeb 4-16 characters.")
-        sp.verify(_auctionSeconds > 300 & _auctionSeconds < 7776000, "Auction time should be in between 330 to 7776000 seconds.")
+        sp.verify((_auctionSeconds > 300) & (_auctionSeconds < 7776000), "Auction time should be in between 330 to 7776000 seconds.")
         sp.verify(~self.data.alreadyActiveAuction.contains(sp.sender), "Auction is already in process by this user.")
         
         safleAddress = sp.view(
@@ -52,15 +52,16 @@ class Auction(checkingContract.CheckingContract):
             safleId=lower,
             bidRate=sp.map(),
             higestBidderAddress=sp.sender,
-            highestBid=0,
+            highestBid=sp.mutez(0),
             totalBids=0,
             totalBidders=0,
             biddersArray=[],
             returnBidsOfOther=False,
             auctionLastFor=sp.timestamp_from_utc_now().add_seconds(params._auctionSeconds),
+            safleIdTransferred=False
         )
         self.data.safleIdToAddress[lower] = sp.sender
-        self.data.alreadyActiveAuction[sp.sender] = True
+        self.data.alreadyActiveAuction.add(sp.sender)
         storageContract = sp.contract(
             sp.TRecord(
                 _safleId=sp.TString,
@@ -93,14 +94,14 @@ class Auction(checkingContract.CheckingContract):
         sp.verify(bidAmount + self.data.auction[auctioner].bidRate.get(sp.sender, sp.mutez(0)) > self.data.auction[auctioner].highestBid, "Bid amount should be greater than the current bidrate.")
         sp.verify(sp.timestamp_from_utc_now() < self.data.auction[auctioner].auctionLastFor, "Auction time is completed")
 
-        if(self.data.auction[auctioner].bidRate[sp.sender]==sp.mutez(0)):
+        sp.if self.data.auction[auctioner].bidRate.get(sp.sender, sp.mutez(0))==sp.mutez(0):
             self.data.auction[auctioner].bidRate[sp.sender] = bidAmount
             self.data.auction[auctioner].highestBid = bidAmount
             self.data.auction[auctioner].biddersArray.push(sp.sender)
             self.data.auction[auctioner].totalBidders+=1
-        else:
-            self.data.auction[auctioner].bidRate[sp.sender] = self.data.auction[auctioner].bidRate[sp.sender]+bidAmount
-            self.data.auction[auctioner].highestBid = self.data.auction[auctioner].bidRate[sp.sender]
+        sp.else:
+            self.data.auction[auctioner].bidRate[sp.sender] = self.data.auction[auctioner].bidRate.get(sp.sender, sp.mutez(0))+bidAmount
+            self.data.auction[auctioner].highestBid = self.data.auction[auctioner].bidRate.get(sp.sender, sp.mutez(0))
         self.data.auction[auctioner].higestBidderAddress = sp.sender
         self.data.auction[auctioner].totalBids+=1
 
@@ -111,10 +112,10 @@ class Auction(checkingContract.CheckingContract):
         sp.verify(thisAuction.auctionConductor == sp.sender)
         sp.verify(sp.len(thisAuction.biddersArray) > 0)
 
-        sp.for i in sp.range(0, sp.len(thisAuction.biddersArray)):
-            sp.if thisAuction.biddersArray[i] != thisAuction.higestBidderAddress):
-                bidderAmount = thisAuction.bidRate[thisAuction.biddersArray[i]]
-                sp.send(thisAuction.biddersArray[i], bidderAmount)
+        sp.for bidder in thisAuction.biddersArray:
+            sp.if bidder != thisAuction.higestBidderAddress:
+                bidderAmount = thisAuction.bidRate[bidder]
+                sp.send(bidder, bidderAmount)
                 self.data.alreadyActiveAuction.remove(sp.sender)
 
         thisAuction.returnBidsOfOther = True
