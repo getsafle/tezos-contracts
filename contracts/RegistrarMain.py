@@ -1,6 +1,5 @@
 import smartpy as sp
 
-registrarStorage = sp.io.import_stored_contract("RegistrarStorage.py")
 checker = sp.io.import_stored_contract("CheckingClass.py")
 
 
@@ -255,34 +254,3 @@ class RegistrarMain(sp.Contract):
             sp.mutez(0),
             registrarStorageContract
         )
-
-
-@sp.add_test(name="SafleID Main")
-def test():
-    scenario = sp.test_scenario()
-    scenario.table_of_contents()
-    scenario.h1("Safle Main")
-
-    # Initialize test admin addresses
-    owner = sp.test_account("owner")
-    seller = sp.test_account("seller")
-    wallet = sp.test_account("wallet")
-
-    mainContract = RegistrarMain(
-        _ownerAddress=owner.address,
-        _walletAddress=wallet.address
-    )
-    scenario += mainContract
-
-    storageContract = registrarStorage.RegistrarStorage(
-        _ownerAddress=owner.address,
-        _mainContractAddress=mainContract.address
-    )
-    scenario += storageContract
-
-    scenario += mainContract.setStorageContract(
-        _registrarStorageContract=storageContract.address
-    ).run(sender=owner)
-    scenario += mainContract.registerRegistrar(
-        _registrarName="seller"
-    ).run(sender=seller)
