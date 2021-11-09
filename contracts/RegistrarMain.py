@@ -1,14 +1,13 @@
 import smartpy as sp
 
-registrarStorage = sp.io.import_stored_contract("RegistrarStorage.py")
 checkingContract = sp.io.import_stored_contract("CheckingContract.py")
 
 
 class RegistrarMain(checkingContract.CheckingContract):
-    def __init__(self):
+    def __init__(self, _ownerAddress, _walletAddress):
         self.init(
-            contractOwner=sp.address("tz1"),
-            walletAddress=sp.address("tz1"),
+            contractOwner=_ownerAddress,
+            walletAddress=_walletAddress,
             safleIdRegStatus=False,
             registrarStorageContractAddress=sp.address("tz1"),
             safleIdFees=sp.mutez(0),
@@ -256,33 +255,3 @@ class RegistrarMain(checkingContract.CheckingContract):
             sp.mutez(0),
             registrarStorageContract
         )
-
-
-@sp.add_test(name="SafleID Main")
-def test():
-    scenario = sp.test_scenario()
-    scenario.table_of_contents()
-    scenario.h1("Safle Main")
-
-    # Initialize test admin addresses
-    owner = sp.test_account("owner")
-    seller = sp.test_account("seller")
-
-    mainContract = RegistrarMain()
-    scenario += mainContract
-    mainContract.setOwner().run(sender=owner)
-
-    storageContract = registrarStorage.RegistrarStorage()
-    scenario += storageContract
-
-    scenario += storageContract.setOwner().run(sender=owner)
-    scenario += storageContract.upgradeMainContractAddress(
-        _mainContractAddress=mainContract.address
-    ).run(sender=owner)
-
-    scenario += mainContract.setStorageContract(
-        _registrarStorageContract=storageContract.address
-    ).run(sender=owner)
-    scenario += mainContract.registerRegistrar(
-        _registrarName="seller"
-    ).run(sender=seller)
