@@ -35,7 +35,7 @@ class RegistrarStorage(sp.Contract):
             isAddressTaken=sp.map(),
             totalRegistrars=0,
             totalSafleIdRegistered=0,
-            auctionContractAddress=sp.address("tz1"),
+            auctionContractAddress=sp.address("KT18amZmM5W7qDWVt2pH6uj7sCEd3kbzLrHT"),
             resolveOldSafleIdFromAddress=sp.map(
                 tkey=sp.TAddress,
                 tvalue=sp.TList(sp.TBytes)

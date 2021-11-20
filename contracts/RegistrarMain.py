@@ -9,7 +9,7 @@ class RegistrarMain(checkingContract.CheckingContract):
             contractOwner=_ownerAddress,
             walletAddress=_walletAddress,
             safleIdRegStatus=False,
-            registrarStorageContractAddress=sp.address("tz1"),
+            registrarStorageContractAddress=sp.address("KT18amZmM5W7qDWVt2pH6uj7sCEd3kbzLrHT"),
             safleIdFees=sp.mutez(0),
             registrarFees=sp.mutez(0),
             storageContractAddress=False
@@ -31,11 +31,6 @@ class RegistrarMain(checkingContract.CheckingContract):
     def safleIdChecks(self, _safleId):
         sp.verify(sp.amount >= self.data.safleIdFees, "Registration fees not matched.")
         self.isSafleIdValid(_safleId)
-
-    @sp.entry_point
-    def setOwner(self):
-        sp.verify(self.data.contractOwner == sp.address("tz1"), "Owner can be set only once.")
-        self.data.contractOwner = sp.sender
 
     @sp.entry_point
     def setSafleIdFees(self, params):
