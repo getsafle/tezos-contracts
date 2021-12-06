@@ -5,7 +5,7 @@ class CheckingContract(sp.Contract):
 
     @sp.global_lambda
     def isContract(address):
-        sp.result((address < sp.address("tz1Ke2h7sDdakHJQh8WX4Z372du1KChsksyU")) & (address > sp.address("KT18amZmM5W7qDWVt2pH6uj7sCEd3kbzLrHT")))
+        sp.result((address < sp.address("tz1Ke2h7sDdakHJQh8WX4Z372du1KChsksyU")) & (address >= sp.address("KT18amZmM5W7qDWVt2pH6uj7sCEd3kbzLrHT")))
 
     @sp.global_lambda
     def toLower(string):
